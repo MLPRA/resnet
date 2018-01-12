@@ -3,6 +3,8 @@ import chainer
 import multiprocessing
 from chainer.links import ResNet50Layers
 from progressbar import ProgressBar
+
+from src.classifier import Classifier
 from src.dataset import LabeledImageDatasetBuilder
 
 def run_train():
@@ -10,6 +12,8 @@ def run_train():
     parser = ArgumentParser()
     parser.add_argument('--paths', type=str, nargs='+', required=True,
                         help='Root paths of folders that contain images and pascal voc files')
+    parser.add_argument('--label_names', type=str, required=True,
+                        help='Path to label names file')
     parser.add_argument('--training_splitsize', type=float, default=0.9,
                         help='Splitsize of training data')
     parser.add_argument('--batchsize', type=int, default=20,
@@ -25,7 +29,8 @@ def run_train():
     args = parser.parse_args()
 
     # create model
-    model = ResNet50Layers(None)
+    predictor = ResNet50Layers(None)
+    model = Classifier(predictor)
 
     # TODO: initmodel
 
@@ -37,7 +42,7 @@ def run_train():
     # TODO: mean
 
     # build datasets from paths
-    builder = LabeledImageDatasetBuilder(args.paths)
+    builder = LabeledImageDatasetBuilder(args.paths, args.label_names)
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
 
     train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize, repeat=False)

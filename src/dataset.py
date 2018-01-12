@@ -60,9 +60,18 @@ class LabeledImage:
 
 class LabeledImageDatasetBuilder:
 
-    def __init__(self, dir_paths):
+    def __init__(self, dir_paths, label_names):
         self.labeled_images = []
 
+        # read label names
+        with open(label_names, 'r') as f:
+            self.label_names = f.read().splitlines()
+
+        self.label_names_dict = {}
+        for i in range(len(self.label_names)):
+            self.label_names_dict[self.label_names[i]] = i
+
+        # crawl images
         jpg_paths = {}
         xml_paths = {}
 
@@ -75,12 +84,13 @@ class LabeledImageDatasetBuilder:
                     elif file_extension.lower() == '.xml':
                         xml_paths[file_name] = root + '/' + file
 
+        # map images to labels and bounding boxes
         for key in xml_paths:
             if key in jpg_paths:
                 xml = ElementTree.parse(xml_paths[key])
                 for object in xml.findall('object'):
                     object_name = object.find('name').text
-                    object_label = abs(hash(object_name))
+                    object_label = self.label_names_dict[object_name]
 
                     object_xmin = int(object.find('bndbox/xmin').text)
                     object_ymin = int(object.find('bndbox/ymin').text)
