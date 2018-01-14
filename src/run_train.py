@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 import chainer
-from chainer.links import ResNet50Layers
+from src.resnet import ResNet50Layers
 from chainer.training import extensions
 
 from src.classifier import Classifier
