@@ -60,16 +60,8 @@ class ImageSegment:
 
 class LabeledImageDatasetBuilder:
 
-    def __init__(self, dir_paths, label_names):
+    def __init__(self, dir_paths, label_handler):
         self.images = []
-
-        # read label names
-        with open(label_names, 'r') as f:
-            self.label_names = f.read().splitlines()
-
-        self.label_names_dict = {}
-        for i in range(len(self.label_names)):
-            self.label_names_dict[self.label_names[i]] = i
 
         # crawl images
         jpg_paths = {}
@@ -90,7 +82,7 @@ class LabeledImageDatasetBuilder:
                 xml = ElementTree.parse(xml_paths[key])
                 for object in xml.findall('object'):
                     object_name = object.find('name').text
-                    object_label = self.label_names_dict[object_name]
+                    object_label = label_handler.get_label_int(object_name)
 
                     object_xmin = int(object.find('bndbox/xmin').text)
                     object_ymin = int(object.find('bndbox/ymin').text)
@@ -113,3 +105,20 @@ class LabeledImageDatasetBuilder:
         dataset2 = LabeledImageDataset(self.images[splitnumber:])
 
         return dataset1, dataset2
+
+
+class LabelHandler():
+
+    def __init__(self, label_names):
+        with open(label_names, 'r') as f:
+            self.label_names = f.read().splitlines()
+
+        self.label_names_dict = {}
+        for i in range(len(self.label_names)):
+            self.label_names_dict[self.label_names[i]] = i
+
+    def get_label_int(self, label_str):
+        return self.label_names_dict[label_str]
+
+    def get_label_str(self, label_int):
+        return self.label_names[label_int]

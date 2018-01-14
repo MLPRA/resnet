@@ -4,7 +4,8 @@ from src.resnet import ResNet50Layers
 from chainer.training import extensions
 
 from src.classifier import Classifier
-from src.dataset import LabeledImageDatasetBuilder
+from src.dataset import LabeledImageDatasetBuilder, LabelHandler
+
 
 def run_train():
 
@@ -39,7 +40,9 @@ def run_train():
         model.to_gpu()
 
     # build datasets from paths
-    builder = LabeledImageDatasetBuilder(args.paths, args.label_names)
+    label_handler = LabelHandler(args.label_names)
+    builder = LabeledImageDatasetBuilder(args.paths, label_handler)
+
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
 
     train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
