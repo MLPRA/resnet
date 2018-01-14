@@ -1,4 +1,4 @@
-import src.predict
+import src.run_predict
 
 if __name__ == '__main__':
-    src.predict.predict()
+    src.run_predict.predict()
