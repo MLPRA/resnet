@@ -1,8 +1,7 @@
 from argparse import ArgumentParser
 import chainer
-import multiprocessing
 from chainer.links import ResNet50Layers
-from progressbar import ProgressBar
+from chainer.training import extensions
 
 from src.classifier import Classifier
 from src.dataset import LabeledImageDatasetBuilder
@@ -22,8 +21,8 @@ def run_train():
                         help='Numbers of epochs to train')
     parser.add_argument('--gpu', type=int, default=-1,
                         help='GPU ID, negative value indicates CPU')
-    parser.add_argument('--out', default='output',
-                        help='Output directory')
+    parser.add_argument('--out', default='trainer_output',
+                        help='Output directory of trainer')
     parser.add_argument('--val_batchsize', type=int, default=250,
                         help='Validation minibatch size')
     args = parser.parse_args()
@@ -39,13 +38,11 @@ def run_train():
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
 
-    # TODO: mean
-
     # build datasets from paths
     builder = LabeledImageDatasetBuilder(args.paths, args.label_names)
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
 
-    train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize, repeat=False)
+    train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
     val_iter = chainer.iterators.SerialIterator(val_dataset, args.val_batchsize, repeat=False)
 
     # optimizer
@@ -58,8 +55,11 @@ def run_train():
     updater = chainer.training.updater.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    # TODO: extensions
-
+    trainer.extend(extensions.LogReport())
     trainer.extend(chainer.training.extensions.ProgressBar(update_interval=10))
 
     trainer.run()
+
+    # save model
+    output_file_path = '{0}/resnet_{1}_{2}.model'.format(args.out, args.batchsize, args.epoch)
+    chainer.serializers.save_npz(output_file_path, predictor)
