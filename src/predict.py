@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 
 import chainer
 
-from src.dataset import LabeledImage
+from src.dataset import ImageSegment
 from src.resnet import ResNet50Layers
 
 
@@ -31,12 +31,10 @@ def predict():
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
 
-    # TODO: a this is a bit hacky, change the LabeledImage to pure Image without label and handle the label somewhere else
+    image_segment = ImageSegment(args.image, args.xmin, args.ymin, args.xmax, args.ymax)
 
-    labeledImage = LabeledImage(args.image, 0, args.xmin, args.ymin, args.xmax, args.ymax)
+    image = image_segment()
 
-    image, _ = labeledImage.img_label_pair()
-
-    prediction = model.predict([image],oversample=False)
+    prediction = model.predict([image], oversample=True)
 
     print(prediction)

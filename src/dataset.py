@@ -24,22 +24,24 @@ class LabeledImageDataset:
             return self.get_example(index)
 
     def get_example(self, index):
-        return self.labeled_images[index].img_label_pair()
+        image_segement, label = self.labeled_images[index]
+        label = np.array(label, dtype=np.int32)
+
+        return image_segement(), label
 
 
-class LabeledImage:
+class ImageSegment:
 
-    IMG_SIZE = 300
+    IMG_SIZE = 224
 
-    def __init__(self, path, label, xmin, ymin, xmax, ymax):
+    def __init__(self, path, xmin, ymin, xmax, ymax):
         self.path = path
-        self.label = label
         self.xmin = xmin
         self.ymin = ymin
         self.xmax = xmax
         self.ymax = ymax
 
-    def img_label_pair(self):
+    def __call__(self):
         if not os.path.exists(self.path):
             raise IOError('File does not exist: %s' % self.path)
 
@@ -53,15 +55,13 @@ class LabeledImage:
         image = image.transpose(2, 0, 1).astype(np.float32)
         image *= (1.0 / 255.0)
 
-        label = np.array(self.label, dtype=np.int32)
-
-        return image, label
+        return image
 
 
 class LabeledImageDatasetBuilder:
 
     def __init__(self, dir_paths, label_names):
-        self.labeled_images = []
+        self.images = []
 
         # read label names
         with open(label_names, 'r') as f:
@@ -97,19 +97,19 @@ class LabeledImageDatasetBuilder:
                     object_xmax = int(object.find('bndbox/xmax').text)
                     object_ymax = int(object.find('bndbox/ymax').text)
 
-                    labeled_image = LabeledImage(jpg_paths[key], object_label, object_xmin, object_ymin, object_xmax,
+                    image_segment = ImageSegment(jpg_paths[key], object_xmin, object_ymin, object_xmax,
                                                  object_ymax)
-                    self.labeled_images.append(labeled_image)
+                    self.images.append((image_segment, object_label))
 
-        random.shuffle(self.labeled_images)
+        random.shuffle(self.images)
 
     def get_labeled_image_dataset(self):
-        return LabeledImageDataset(self.labeled_images)
+        return LabeledImageDataset(self.images)
 
     def get_labeled_image_dataset_split(self, splitsize):
-        splitnumber = int(round(len(self.labeled_images) * splitsize))
+        splitnumber = int(round(len(self.images) * splitsize))
 
-        dataset1 = LabeledImageDataset(self.labeled_images[:splitnumber])
-        dataset2 = LabeledImageDataset(self.labeled_images[splitnumber:])
+        dataset1 = LabeledImageDataset(self.images[:splitnumber])
+        dataset2 = LabeledImageDataset(self.images[splitnumber:])
 
         return dataset1, dataset2
