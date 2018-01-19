@@ -3,6 +3,7 @@ from chainer import Variable
 from chainer.dataset import concat_examples
 from chainer.links.model.vision.resnet import prepare
 
+
 class ResNet50Layers(chainer.links.ResNet50Layers):
 
     def _layer_out(self, images, layer):
