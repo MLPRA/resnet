@@ -5,16 +5,14 @@ import chainer
 from src.dataset import ImageSegment, LabelHandler
 from src.resnet import ResNet50Layers
 
-
-def predict():
-
+def _get_args():
     parser = ArgumentParser()
     parser.add_argument('--image', type=str, required=True,
                         help='Path of image')
     parser.add_argument('--xmin', type=int, required=True,
                         help='Minuimum x value of slice')
     parser.add_argument('--xmax', type=int, required=True,
-                    help='Maximum x value of slice')
+                        help='Maximum x value of slice')
     parser.add_argument('--ymin', type=int, required=True,
                         help='Minuimum y value of slice')
     parser.add_argument('--ymax', type=int, required=True,
@@ -25,7 +23,10 @@ def predict():
                         help='Path to label names file')
     parser.add_argument('--gpu', type=int, default=-1,
                         help='GPU ID, negative value indicates CPU')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def predict():
+    args = _get_args()
 
     model = ResNet50Layers(pretrained_model=args.model)
 
@@ -39,9 +40,26 @@ def predict():
 
     image = image_segment()
 
-    prediction = model.predict([image], oversample=True)[0].array
+    prediction = model.predict([image])[0].array
 
     for i in range(len(prediction)):
         if prediction[i] > 0:
             output = '{}: {}%'.format(label_handler.get_label_str(i), prediction[i] * 100)
             print(output)
+
+def feature_vector():
+    args = _get_args()
+
+    model = ResNet50Layers(pretrained_model=args.model)
+
+    if args.gpu >= 0:
+        chainer.cuda.get_device_from_id(args.gpu).use()
+        model.to_gpu()
+
+    image_segment = ImageSegment(args.image, args.xmin, args.ymin, args.xmax, args.ymax)
+
+    image = image_segment()
+
+    feature_vector = model.feature_vector([image])[0].array
+
+    print(feature_vector)
