@@ -2,3 +2,4 @@ chainer
 opencv-python
 numpy
 progressbar2
+scikit-learn
