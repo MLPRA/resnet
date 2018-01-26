@@ -18,7 +18,7 @@ def run_train():
                         help='Splitsize of training data')
     parser.add_argument('--batchsize', type=int, default=20,
                         help='Learning minibatch size')
-    parser.add_argument('--epoch', type=int, default=10,
+    parser.add_argument('--epoch', type=int, default=50,
                         help='Numbers of epochs to train')
     parser.add_argument('--gpu', type=int, default=-1,
                         help='GPU ID, negative value indicates CPU')
