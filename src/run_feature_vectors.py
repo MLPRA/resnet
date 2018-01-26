@@ -31,17 +31,15 @@ def run_feature_vectors():
     label_handler = LabelHandler(args.label_names)
     dataset = LabeledImageDatasetBuilder(args.paths, label_handler).get_labeled_image_dataset()
 
-    # feature_vector_label_pairs = []
-    # image, label = dataset[0]
-    # feature_vector = model.feature_vector([image])[0].array
-    # feature_vector_label_pairs.append((feature_vector, int(label)))
-
-    feature_vector_label_pairs = [(model.feature_vector([image])[0].array, int(label)) for image, label in dataset]
+    feature_vectors = []
+    labels = []
+    for i, (image, label) in enumerate(dataset):
+        print(i)
+        feature_vectors.append(model.feature_vector([image])[0].array)
+        labels.append(label)
 
     if not os.path.exists(args.out):
         os.makedirs(args.out)
 
-    output_file_path = '{}/feature_vectors.npz'.format(args.out)
-    np.savez(output_file_path, feature_vector_label_pairs)
-
-    print('finished')
+    vectors_output = '{}/vectors.npz'.format(args.out)
+    np.savez(vectors_output, feature_vectors, labels)
