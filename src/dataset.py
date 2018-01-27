@@ -145,3 +145,6 @@ class LabelHandler():
 
     def get_label_str(self, label_int):
         return self.label_names[label_int]
+
+    def __len__(self):
+        return len(self.label_names)
