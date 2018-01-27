@@ -95,6 +95,29 @@ class LabeledImageDatasetBuilder:
 
         random.shuffle(self.images)
 
+    def even_dataset(self, max_per_label=None):
+        if max_per_label == None:
+            label_counter = {}
+            for _, label in self.images:
+                if label in label_counter:
+                    label_counter[label] += 1
+                else:
+                    label_counter[label] = 1
+            max_per_label = min(label_counter.values())
+
+        new_images = []
+        label_counter = {}
+        for image, label in self.images:
+            if label in label_counter:
+                if label_counter[label] == max_per_label:
+                    continue
+                label_counter[label] += 1
+            else:
+                label_counter[label] = 1
+            new_images.append((image, label))
+
+        self.images = new_images
+
     def get_labeled_image_dataset(self):
         return LabeledImageDataset(self.images)
 

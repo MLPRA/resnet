@@ -32,8 +32,6 @@ def run_train():
     predictor = ResNet50Layers(None)
     model = Classifier(predictor)
 
-    # TODO: initmodel
-
     # use selected gpu by id
     if args.gpu >= 0:
         chainer.cuda.get_device_from_id(args.gpu).use()
@@ -42,6 +40,7 @@ def run_train():
     # build datasets from paths
     label_handler = LabelHandler(args.label_names)
     builder = LabeledImageDatasetBuilder(args.paths, label_handler)
+    builder.even_dataset(500)
 
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
 
