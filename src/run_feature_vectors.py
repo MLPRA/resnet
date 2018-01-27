@@ -29,7 +29,9 @@ def run_feature_vectors():
         model.to_gpu()
 
     label_handler = LabelHandler(args.label_names)
-    dataset = LabeledImageDatasetBuilder(args.paths, label_handler).get_labeled_image_dataset()
+    builder = LabeledImageDatasetBuilder(args.paths, label_handler)
+    builder.even_dataset(500)
+    dataset = builder.get_labeled_image_dataset()
 
     feature_vectors = []
     labels = []
