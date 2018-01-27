@@ -28,5 +28,7 @@ def run_tsne():
     if not os.path.exists(args.out):
         os.makedirs(args.out)
 
-    vectors_output = '{}/vectors_2d.npz'.format(args.out)
+    file_name = args.vectors.split('/')[-1].split('.')[0]
+
+    vectors_output = '{}/{}_{}_2d.npz'.format(args.out, file_name, args.pca_components)
     np.savez(vectors_output, feature_vectors_2d, labels)
