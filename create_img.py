@@ -35,4 +35,7 @@ if __name__ == '__main__':
         legend_handles.append(patch)
     pyplot.legend(handles=legend_handles)
 
-    pyplot.savefig('{}/features.png'.format(args.out))
+    file_name_arr = args.vectors.split('/')[-1].split('.')
+    file_name = '.'.join(file_name_arr[0:-1])
+
+    pyplot.savefig('{}/{}.png'.format(args.out, file_name))
