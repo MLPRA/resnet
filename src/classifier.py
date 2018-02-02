@@ -3,8 +3,6 @@ from chainer import reporter
 
 
 class Classifier(chainer.links.Classifier):
-    compute_accuracy = False
-
     def __call__(self, *args, **kwargs):
         if isinstance(self.label_key, int):
             if not (-len(args) <= self.label_key < len(args)):

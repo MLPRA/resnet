@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 import chainer
 from src.resnet import ResNet50Layers
@@ -26,8 +27,10 @@ def run_train():
                         help='GPU ID, negative value indicates CPU')
     parser.add_argument('--out', default='trainer_output',
                         help='Output directory of trainer')
-    parser.add_argument('--val_batchsize', type=int, default=250,
+    parser.add_argument('--val_batchsize', type=int, default=100,
                         help='Validation minibatch size')
+    parser.add_argument('--learning_rate', type=float, default=0.01)
+    parser.add_argument('--momentum', type=float, default=0.9)
     args = parser.parse_args()
 
     # create model
@@ -49,21 +52,51 @@ def run_train():
     train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
     val_iter = chainer.iterators.SerialIterator(val_dataset, args.val_batchsize, repeat=False)
 
+    output_dir = '{}/{}_{}_{}_{}'.format(args.out, args.batchsize, args.epoch, args.learning_rate, args.momentum)
+
     # optimizer
-    learning_rate = 0.01
-    momentum = 0.9
-    optimizer = chainer.optimizers.MomentumSGD(learning_rate, momentum)
+    optimizer = chainer.optimizers.MomentumSGD(args.learning_rate, args.momentum)
     optimizer.setup(model)
 
     # trainer
     updater = chainer.training.updater.StandardUpdater(train_iter, optimizer, device=args.gpu)
-    trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), args.out)
+    trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), output_dir)
 
-    trainer.extend(extensions.LogReport())
-    trainer.extend(chainer.training.extensions.ProgressBar(update_interval=10))
+    trainer.extend(extensions.LogReport([
+        'epoch',
+        'iteration',
+        'elapsed_time',
+        'main/loss',
+        'main/accuracy',
+        'validation/main/loss',
+        'validation/main/accuracy',
+    ]))
+    trainer.extend(chainer.training.extensions.ProgressBar(update_interval=1))
+    trainer.extend(extensions.Evaluator(val_iter, model, device=args.gpu))
+    trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], x_key='epoch', file_name='loss.png'))
+    trainer.extend(
+        extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], x_key='epoch', file_name='accuracy.png'))
 
     trainer.run()
 
     # save model
-    output_file_path = '{0}/resnet_{1}_{2}.model'.format(args.out, args.batchsize, args.epoch)
+    output_file_path = '{0}/resnet.model'.format(output_dir)
     chainer.serializers.save_npz(output_file_path, predictor)
+
+    # save meta information
+    images = train_dataset.get_image_numbers(range(len(label_handler)))
+    images_per_label = {}
+    for label in range(len(label_handler)):
+        images_per_label[label_handler.get_label_str(label)] = images[label]
+
+    meta_output = {
+        'data/images': len(train_dataset),
+        'data/images_per_label': images_per_label,
+        'training/epochs': args.epoch,
+        'training/momentum': args.momentum,
+        'training/learning_rate': args.learning_rate,
+        'training/batchsize': args.batchsize,
+    }
+
+    with open('{0}/meta.json'.format(output_dir), 'w') as f:
+        json.dump(meta_output, f, indent=4)

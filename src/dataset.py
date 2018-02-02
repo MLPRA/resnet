@@ -33,6 +33,21 @@ class LabeledImageDataset:
 
         return image_segement(), label
 
+    def get_image_numbers(self, arr):
+        numbers = {}
+        for label in arr:
+            numbers[label] = 0
+
+        for _, label in self.labeled_images:
+            if label in numbers:
+                numbers[label] += 1
+
+        out = []
+        for label in arr:
+            out.append(numbers[label])
+
+        return out
+
 
 class ImageSegment:
 
@@ -102,6 +117,10 @@ class LabeledImageDatasetBuilder:
                 xml = ElementTree.parse(xml_paths[key])
                 for object in xml.findall('object'):
                     object_name = object.find('name').text
+
+                    if not label_handler.is_label_str(object_name):
+                        continue
+
                     object_label = label_handler.get_label_int(object_name)
 
                     object_xmin = int(object.find('bndbox/xmin').text)
@@ -119,6 +138,10 @@ class LabeledImageDatasetBuilder:
                 with open(json_paths[key]) as f:
                     data = json.load(f)
                 object_name = data['label']
+
+                if not label_handler.is_label_str(object_name):
+                    continue
+
                 object_label = label_handler.get_label_int(object_name)
 
                 with Image.open(jpg_paths[key]) as img:
@@ -189,6 +212,16 @@ class LabelHandler():
 
     def get_label_str(self, label_int):
         return self.label_names[label_int]
+
+    def is_label_int(self, label_int):
+        if label_int in range(len(self.label_names)):
+            return True
+        return False
+
+    def is_label_str(self, label_str):
+        if label_str in self.label_names_dict:
+            return True
+        return False
 
     def __len__(self):
         return len(self.label_names)
