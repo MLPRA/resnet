@@ -40,7 +40,8 @@ def run_train():
     # build datasets from paths
     label_handler = LabelHandler(args.label_names)
     builder = LabeledImageDatasetBuilder(args.paths, label_handler)
-    builder.even_dataset(500)
+    # builder.even_dataset(500)
+    builder.eliminate_class(label_handler.get_label_int('other'))
 
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
 
