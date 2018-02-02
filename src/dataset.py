@@ -4,6 +4,8 @@ import numpy as np
 import random
 import xml.etree.ElementTree as ElementTree
 
+from PIL import Image
+
 
 class LabeledImageDataset:
 
@@ -45,16 +47,16 @@ class ImageSegment:
         if not os.path.exists(self.path):
             raise IOError('File does not exist: %s' % self.path)
 
-        # Read image and crop area
-        image = cv2.imread(self.path)
-        image = image[self.ymin:self.ymax, self.xmin:self.xmax, :]
+        pil_image = Image.open(self.path)
+        pil_image = pil_image.convert('RGB')
+        pil_image = pil_image.crop((self.xmin, self.ymin, self.xmax, self.ymax))
+        pil_image = pil_image.resize((self.IMG_SIZE, self.IMG_SIZE))
 
-        height, width = image.shape[:2]
-        image = cv2.resize(image, (self.IMG_SIZE, self.IMG_SIZE))
+        image = np.asarray(pil_image, dtype=np.float32)
+        image = image[:, :, ::-1]
 
-        image = image.transpose(2, 0, 1).astype(np.float32)
-        image *= (1.0 / 255.0)
-
+        image -= np.array([103.063, 115.903, 123.152], dtype=np.float32)
+        image = image.transpose((2, 0, 1))
         return image
 
 
@@ -116,6 +118,13 @@ class LabeledImageDatasetBuilder:
                 label_counter[label] = 1
             new_images.append((image, label))
 
+        self.images = new_images
+
+    def eliminate_class(self, eliminate_label):
+        new_images = []
+        for image, label in self.images:
+            if label != eliminate_label:
+                new_images.append((image, label))
         self.images = new_images
 
     def get_labeled_image_dataset(self):
