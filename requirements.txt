@@ -4,3 +4,4 @@ numpy
 progressbar2
 scikit-learn
 matplotlib
+Pillow
