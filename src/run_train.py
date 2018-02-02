@@ -12,11 +12,13 @@ def run_train():
     parser = ArgumentParser()
     parser.add_argument('--paths', type=str, nargs='+', required=True,
                         help='Root paths of folders that contain images and pascal voc files')
+    parser.add_argument('--label_type', type=str, default='xml',
+                        help='Type of the label file')
     parser.add_argument('--label_names', type=str, required=True,
                         help='Path to label names file')
     parser.add_argument('--training_splitsize', type=float, default=0.9,
                         help='Splitsize of training data')
-    parser.add_argument('--batchsize', type=int, default=20,
+    parser.add_argument('--batchsize', type=int, default=100,
                         help='Learning minibatch size')
     parser.add_argument('--epoch', type=int, default=50,
                         help='Numbers of epochs to train')
@@ -39,8 +41,7 @@ def run_train():
 
     # build datasets from paths
     label_handler = LabelHandler(args.label_names)
-    builder = LabeledImageDatasetBuilder(args.paths, label_handler)
-    # builder.even_dataset(500)
+    builder = LabeledImageDatasetBuilder(args.paths, label_handler, type=args.type)
     builder.eliminate_class(label_handler.get_label_int('other'))
 
     train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
