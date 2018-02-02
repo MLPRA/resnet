@@ -1,3 +1,5 @@
+import json
+
 import cv2
 import os
 import numpy as np
@@ -62,23 +64,39 @@ class ImageSegment:
 
 class LabeledImageDatasetBuilder:
 
-    def __init__(self, dir_paths, label_handler):
+    def __init__(self, dir_paths, label_handler, type='xml'):
+        type = type.lower()
+        if type not in ['xml', 'json']:
+            raise ValueError('Type needs to be xml or json. Given: {}'.format(type))
+
         self.images = []
 
         # crawl images
         jpg_paths = {}
         xml_paths = {}
+        json_paths = {}
 
         for dir_path in dir_paths:
             for root, _, files in os.walk(dir_path):
                 for file in files:
                     file_name, file_extension = os.path.splitext(file)
                     if file_extension.lower() == '.jpg':
-                        jpg_paths[file_name] = root + '/' + file
-                    elif file_extension.lower() == '.xml':
-                        xml_paths[file_name] = root + '/' + file
+                        jpg_paths[file_name] = '{}/{}'.format(root, file)
+                    elif file_extension.lower() == '.xml' and type == 'xml':
+                        xml_paths[file_name] = '{}/{}'.format(root, file)
+                    elif file_extension.lower() == '.json' and type == 'json':
+                        json_paths[file_name] = '{}/{}'.format(root, file)
 
         # map images to labels and bounding boxes
+        if type == 'xml':
+            self._create_images_xml(jpg_paths, xml_paths, label_handler)
+        elif type == 'json':
+            self._create_images_json(jpg_paths, json_paths, label_handler)
+
+        random.shuffle(self.images)
+
+
+    def _create_images_xml(self, jpg_paths, xml_paths, label_handler):
         for key in xml_paths:
             if key in jpg_paths:
                 xml = ElementTree.parse(xml_paths[key])
@@ -95,7 +113,24 @@ class LabeledImageDatasetBuilder:
                                                  object_ymax)
                     self.images.append((image_segment, object_label))
 
-        random.shuffle(self.images)
+    def _create_images_json(self, jpg_paths, json_paths, label_handler):
+        for key in json_paths:
+            if key in jpg_paths:
+                with open(json_paths[key]) as f:
+                    data = json.load(f)
+                object_name = data['label']
+                object_label = label_handler.get_label_int(object_name)
+
+                with Image.open(jpg_paths[key]) as img:
+                    width, height = img.size
+
+                object_xmin = int(data['boundingBox']['x'] * width)
+                object_ymin = int(data['boundingBox']['y'] * height)
+                object_xmax = int(data['boundingBox']['x'] + data['boundingBox']['width'] * width)
+                object_ymax = int(data['boundingBox']['y'] + data['boundingBox']['height'] * height)
+
+                image_segment = ImageSegment(jpg_paths[key], object_xmin, object_ymin, object_xmax, object_ymax)
+                self.images.append((image_segment, object_label))
 
     def even_dataset(self, max_per_label=None):
         if max_per_label == None:
