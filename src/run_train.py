@@ -15,8 +15,6 @@ def run_train():
     parser = ArgumentParser()
     parser.add_argument('--paths', type=str, nargs='+', required=True,
                         help='Root paths of folders that contain images and pascal voc files')
-    parser.add_argument('--label_type', type=str, default='xml',
-                        help='Type of the label file')
     parser.add_argument('--label_names', type=str, required=True,
                         help='Path to label names file')
     parser.add_argument('--max_images', type=int, default=-1,
