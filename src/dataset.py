@@ -79,14 +79,18 @@ class ImageSegment:
 
 class LabeledImageDatasetBuilder:
 
-    def __init__(self, dir_paths, label_handler, type='xml'):
-        type = type.lower()
-        if type not in ['xml', 'json']:
-            raise ValueError('Type needs to be xml or json. Given: {}'.format(type))
+    def __init__(self, dir_paths, label_handler):
+        """
+        crawles through the provided paths to create a list of labeled image segments
+        maps the image label integers according to the label handler
+        favours xml before json
 
+        :param dir_paths: a list of paths with images and label files
+        :param label_handler: LabelHandler object
+        """
         self.images = []
 
-        # crawl images
+        # crawl through folders
         jpg_paths = {}
         xml_paths = {}
         json_paths = {}
@@ -97,44 +101,31 @@ class LabeledImageDatasetBuilder:
                     file_name, file_extension = os.path.splitext(file)
                     if file_extension.lower() == '.jpg':
                         jpg_paths[file_name] = '{}/{}'.format(root, file)
-                    elif file_extension.lower() == '.xml' and type == 'xml':
+                    elif file_extension.lower() == '.xml':
                         xml_paths[file_name] = '{}/{}'.format(root, file)
-                    elif file_extension.lower() == '.json' and type == 'json':
+                    elif file_extension.lower() == '.json':
                         json_paths[file_name] = '{}/{}'.format(root, file)
 
         # map images to labels and bounding boxes
-        if type == 'xml':
-            self._create_images_xml(jpg_paths, xml_paths, label_handler)
-        elif type == 'json':
-            self._create_images_json(jpg_paths, json_paths, label_handler)
-
-        random.shuffle(self.images)
-
-
-    def _create_images_xml(self, jpg_paths, xml_paths, label_handler):
-        for key in xml_paths:
-            if key in jpg_paths:
+        for key in jpg_paths:
+            if key in xml_paths:
                 xml = ElementTree.parse(xml_paths[key])
                 for object in xml.findall('object'):
                     object_name = object.find('name').text
-
                     if not label_handler.is_label_str(object_name):
                         continue
 
-                    object_label = label_handler.get_label_int(object_name)
+                    label = label_handler.get_label_int(object_name)
 
-                    object_xmin = int(object.find('bndbox/xmin').text)
-                    object_ymin = int(object.find('bndbox/ymin').text)
-                    object_xmax = int(object.find('bndbox/xmax').text)
-                    object_ymax = int(object.find('bndbox/ymax').text)
+                    xmin = int(object.find('bndbox/xmin').text)
+                    ymin = int(object.find('bndbox/ymin').text)
+                    xmax = int(object.find('bndbox/xmax').text)
+                    ymax = int(object.find('bndbox/ymax').text)
 
-                    image_segment = ImageSegment(jpg_paths[key], object_xmin, object_ymin, object_xmax,
-                                                 object_ymax)
-                    self.images.append((image_segment, object_label))
+                    image_segment = ImageSegment(jpg_paths[key], xmin, ymin, xmax, ymax)
+                    self.images.append((image_segment, label))
 
-    def _create_images_json(self, jpg_paths, json_paths, label_handler):
-        for key in json_paths:
-            if key in jpg_paths:
+            elif key in json_paths:
                 with open(json_paths[key]) as f:
                     data = json.load(f)
                 object_name = data['label']
@@ -142,29 +133,22 @@ class LabeledImageDatasetBuilder:
                 if not label_handler.is_label_str(object_name):
                     continue
 
-                object_label = label_handler.get_label_int(object_name)
+                label = label_handler.get_label_int(object_name)
 
                 with Image.open(jpg_paths[key]) as img:
                     width, height = img.size
 
-                object_xmin = int(data['boundingBox']['x'] * width)
-                object_ymin = int(data['boundingBox']['y'] * height)
-                object_xmax = int(data['boundingBox']['x'] + data['boundingBox']['width'] * width)
-                object_ymax = int(data['boundingBox']['y'] + data['boundingBox']['height'] * height)
+                xmin = int(data['boundingBox']['x'] * width)
+                ymin = int(data['boundingBox']['y'] * height)
+                xmax = int(data['boundingBox']['x'] + data['boundingBox']['width'] * width)
+                ymax = int(data['boundingBox']['y'] + data['boundingBox']['height'] * height)
 
-                image_segment = ImageSegment(jpg_paths[key], object_xmin, object_ymin, object_xmax, object_ymax)
-                self.images.append((image_segment, object_label))
+                image_segment = ImageSegment(jpg_paths[key], xmin, ymin, xmax, ymax)
+                self.images.append((image_segment, label))
 
-    def even_dataset(self, max_per_label=None):
-        if max_per_label == None:
-            label_counter = {}
-            for _, label in self.images:
-                if label in label_counter:
-                    label_counter[label] += 1
-                else:
-                    label_counter[label] = 1
-            max_per_label = min(label_counter.values())
+        random.shuffle(self.images)
 
+    def even_dataset(self, max_per_label):
         new_images = []
         label_counter = {}
         for image, label in self.images:
@@ -176,13 +160,7 @@ class LabeledImageDatasetBuilder:
                 label_counter[label] = 1
             new_images.append((image, label))
 
-        self.images = new_images
-
-    def eliminate_class(self, eliminate_label):
-        new_images = []
-        for image, label in self.images:
-            if label != eliminate_label:
-                new_images.append((image, label))
+        random.shuffle(new_images)
         self.images = new_images
 
     def get_labeled_image_dataset(self):

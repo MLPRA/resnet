@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 import chainer
 
 from src.evaluator import Evaluator
-#from chainer.training.extensions import Evaluator
 from src.resnet import ResNet50Layers
 from chainer.training import extensions
 
@@ -49,8 +48,7 @@ def run_train():
 
     # build datasets from paths
     label_handler = LabelHandler(args.label_names)
-    builder = LabeledImageDatasetBuilder(args.paths, label_handler, type=args.label_type)
-    builder.eliminate_class(label_handler.get_label_int('other'))
+    builder = LabeledImageDatasetBuilder(args.paths, label_handler)
     if args.max_images > 0:
         builder.even_dataset(args.max_images)
 
