@@ -1,3 +1,4 @@
+import configparser
 import json
 from argparse import ArgumentParser
 import chainer
@@ -11,63 +12,41 @@ from src.dataset import LabeledImageDatasetBuilder, LabelHandler
 
 
 def run_train():
-
     parser = ArgumentParser()
-    parser.add_argument('--paths', type=str, nargs='+', required=True,
-                        help='Root paths of folders that contain images and pascal voc files')
-    parser.add_argument('--label_names', type=str, required=True,
-                        help='Path to label names file')
-    parser.add_argument('--max_images', type=int, default=-1,
-                        help='Max images per class')
-    parser.add_argument('--training_splitsize', type=float, default=0.9,
-                        help='Splitsize of training data')
-    parser.add_argument('--batchsize', type=int, default=100,
-                        help='Learning minibatch size')
-    parser.add_argument('--epoch', type=int, default=50,
-                        help='Numbers of epochs to train')
-    parser.add_argument('--gpu', type=int, default=-1,
-                        help='GPU ID, negative value indicates CPU')
-    parser.add_argument('--out', default='trainer_output',
-                        help='Output directory of trainer')
-    parser.add_argument('--val_batchsize', type=int, default=100,
-                        help='Validation minibatch size')
-    parser.add_argument('--learning_rate', type=float, default=0.01)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    args = parser.parse_args()
+    parser.add_argument('--settings', type=str, required=True,
+                        help='Path to the training settings ini file')
+
+    settings = configparser.ConfigParser()
+    settings.read(parser.parse_args().settings)
 
     # create model
     predictor = ResNet50Layers(None)
     model = Classifier(predictor)
 
     # use selected gpu by id
-    if args.gpu >= 0:
-        chainer.cuda.get_device_from_id(args.gpu).use()
+    gpu = settings.getint('hardware', 'gpu')
+    if gpu >= 0:
+        chainer.cuda.get_device_from_id(gpu).use()
         model.to_gpu()
 
-    # build datasets from paths
-    label_handler = LabelHandler(args.label_names)
-    builder = LabeledImageDatasetBuilder(args.paths, label_handler)
-    if args.max_images > 0:
-        builder.even_dataset(args.max_images)
+    label_handler, train_dataset, val_dataset = _create_datasets(settings['input_data'])
 
-    train_dataset, val_dataset = builder.get_labeled_image_dataset_split(args.training_splitsize)
+    train_iter = chainer.iterators.SerialIterator(train_dataset, settings.getint('trainer', 'batchsize'))
+    val_iter = chainer.iterators.SerialIterator(val_dataset, settings.getint('trainer', 'batchsize'), repeat=False)
 
-    train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
-    val_iter = chainer.iterators.SerialIterator(val_dataset, args.val_batchsize, repeat=False)
-
-    output_dir = '{}/{}_{}_{}_{}'.format(args.out, args.batchsize, args.epoch, args.learning_rate, args.momentum)
+    output_dir = '{}/training_{}_{}'.format(settings.get('output_data', 'path'), settings.get('trainer', 'epochs'), settings.get('optimizer', 'optimizer'))
 
     # optimizer
-    optimizer = chainer.optimizers.MomentumSGD(args.learning_rate, args.momentum)
+    optimizer = _create_optimizer(settings['optimizer'])
     optimizer.setup(model)
 
     # trainer
-    updater = chainer.training.updater.StandardUpdater(train_iter, optimizer, device=args.gpu)
-    trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), output_dir)
+    updater = chainer.training.updater.StandardUpdater(train_iter, optimizer, device=gpu)
+    trainer = chainer.training.Trainer(updater, (settings.getint('trainer', 'epochs'), 'epoch'), output_dir)
 
     trainer.extend(extensions.LogReport())
     trainer.extend(chainer.training.extensions.ProgressBar(update_interval=1))
-    evaluator = Evaluator(val_iter, model, label_handler, device=args.gpu)
+    evaluator = Evaluator(val_iter, model, label_handler, device=gpu)
     trainer.extend(evaluator)
     trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], x_key='epoch', file_name='loss.png'))
 
@@ -82,13 +61,41 @@ def run_train():
     chainer.serializers.save_npz(output_file_path, predictor)
 
     meta_output = {
-        'training/epochs': args.epoch,
-        'training/momentum': args.momentum,
-        'training/learning_rate': args.learning_rate,
-        'training/batchsize': args.batchsize,
-        'train': train_dataset.get_meta_info(label_handler),
-        'validation': val_dataset.get_meta_info(label_handler),
+        'trainer': settings._sections['trainer'],
+        'optimizer': settings._sections['optimizer'],
+        'train_data': train_dataset.get_meta_info(label_handler),
+        'validation_data': val_dataset.get_meta_info(label_handler),
     }
 
     with open('{0}/meta.json'.format(output_dir), 'w') as f:
         json.dump(meta_output, f, indent=4)
+
+
+def _create_datasets(input_data):
+    paths = input_data.get('paths').split()
+    label_names = input_data.get('label_names')
+    max_images = input_data.getint('max_images')
+    split = input_data.getfloat('split')
+
+    label_handler = LabelHandler(label_names)
+    builder = LabeledImageDatasetBuilder(paths, label_handler)
+    if max_images > 0:
+        builder.even_dataset(max_images)
+
+    train_dataset, val_dataset = builder.get_labeled_image_dataset_split(split)
+
+    return label_handler, train_dataset, val_dataset
+
+
+def _create_optimizer(optimizer_data):
+    optimizer_class = getattr(chainer.optimizers, optimizer_data.get('optimizer'))
+
+    optimizer_args = {}
+    for key in optimizer_data:
+        if key == 'optimizer':
+            continue
+        optimizer_args[key] = optimizer_data.getfloat(key)
+
+    optimizer = optimizer_class(**optimizer_args)
+
+    return optimizer
