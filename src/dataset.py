@@ -48,6 +48,17 @@ class LabeledImageDataset:
 
         return out
 
+    def get_meta_info(self, label_handler):
+        image_numbers = self.get_image_numbers(range(len(label_handler)))
+        images_per_label = {}
+        for label, number in enumerate(image_numbers):
+            images_per_label[label_handler.get_label_str(label)] = number
+
+        return {
+            'total': len(self),
+            'per_label': images_per_label
+        }
+
 
 class ImageSegment:
 

@@ -81,19 +81,13 @@ def run_train():
     output_file_path = '{0}/resnet.model'.format(output_dir)
     chainer.serializers.save_npz(output_file_path, predictor)
 
-    # save meta information
-    images = train_dataset.get_image_numbers(range(len(label_handler)))
-    images_per_label = {}
-    for label in range(len(label_handler)):
-        images_per_label[label_handler.get_label_str(label)] = images[label]
-
     meta_output = {
-        'data/images': len(train_dataset),
-        'data/images_per_label': images_per_label,
         'training/epochs': args.epoch,
         'training/momentum': args.momentum,
         'training/learning_rate': args.learning_rate,
         'training/batchsize': args.batchsize,
+        'train': train_dataset.get_meta_info(label_handler),
+        'validation': val_dataset.get_meta_info(label_handler),
     }
 
     with open('{0}/meta.json'.format(output_dir), 'w') as f:
