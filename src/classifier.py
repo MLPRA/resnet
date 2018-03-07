@@ -23,10 +23,10 @@ class Classifier(chainer.links.Classifier):
         self.y = None
         self.loss = None
         self.accuracy = None
-        self.y = self.predictor(*args, **kwargs, layers=['fc6'])
-        self.loss = self.lossfun(self.y['fc6'], t)
+        self.y = self.predictor(*args, **kwargs, layers=['prop'])
+        self.loss = self.lossfun(self.y['prop'], t)
         reporter.report({'loss': self.loss}, self)
         if self.compute_accuracy:
-            self.accuracy = self.accfun(self.y['fc6'], t)
+            self.accuracy = self.accfun(self.y['prop'], t)
             reporter.report({'accuracy': self.accuracy}, self)
         return self.loss
