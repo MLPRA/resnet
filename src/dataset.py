@@ -192,9 +192,7 @@ class LabelHandler():
         with open(label_names, 'r') as f:
             self.label_names = f.read().splitlines()
 
-        self.label_names_dict = {}
-        for i in range(len(self.label_names)):
-            self.label_names_dict[self.label_names[i]] = i
+        self.label_names_dict = {label_name: label_int for label_int, label_name in enumerate(self.label_names)}
 
     def get_label_int(self, label_str):
         return self.label_names_dict[label_str]
