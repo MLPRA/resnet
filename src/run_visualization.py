@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 import chainer
 import os
 from matplotlib import pyplot, patches
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
@@ -62,18 +63,27 @@ def run_visualization():
         for feature_vector, label in zip(feature_vectors_tsne, labels):
             pyplot.plot(feature_vector[0], feature_vector[1], 'o', color=cmap(label), markersize=3)
 
-        legend_handles = []
-        for label_name, label_int in label_handler.label_names_dict.items():
-            legend_handles.append(patches.Patch(color=cmap(label_int), label=label_name))
-        pyplot.legend(handles=legend_handles)
-
-        output_dir = settings.get('output_data', 'path')
-        output_filename = 'pca{}_tsne{}.png'.format(settings.get('visualization', 'pca_dimensions'), settings.get('visualization', 'tsne_dimensions'))
-
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        pyplot.savefig('{}/{}'.format(output_dir, output_filename))
-
     elif tsne_dimensions == 3:
-        # TODO
-        pass
+        figure = pyplot.figure()
+        ax = figure.add_subplot(111, projection='3d')
+
+        xs, ys, zs = zip(*feature_vectors_tsne)
+        colors = [cmap(label) for label in labels]
+
+        ax.scatter(xs, ys, zs, color=colors, s=3)
+
+        #for feature_vector, label in zip(feature_vectors, labels):
+        #    ax.scatter(feature_vector[0], feature_vector[1], feature_vector[2], color=cmap(label), s=3)
+
+    legend_handles = []
+    for label_name, label_int in label_handler.label_names_dict.items():
+        legend_handles.append(patches.Patch(color=cmap(label_int), label=label_name))
+    pyplot.legend(handles=legend_handles)
+
+    output_dir = settings.get('output_data', 'path')
+    output_filename = 'pca{}_tsne{}.png'.format(settings.get('visualization', 'pca_dimensions'),
+                                                settings.get('visualization', 'tsne_dimensions'))
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    pyplot.savefig('{}/{}'.format(output_dir, output_filename))
