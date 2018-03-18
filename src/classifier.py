@@ -1,5 +1,8 @@
 import chainer
+import numpy
 from chainer import reporter
+
+from src.class_accuracy import class_accuracy
 
 
 class Classifier(chainer.links.Classifier):
@@ -29,4 +32,6 @@ class Classifier(chainer.links.Classifier):
         if self.compute_accuracy:
             self.accuracy = self.accfun(self.y['prob'], t)
             reporter.report({'accuracy': self.accuracy}, self)
+            accuracy = {'accuracy_' + str(i): a for i, a in enumerate(class_accuracy(self.y['prob'], t)) if numpy.isfinite(a)}
+            reporter.report(accuracy, self)
         return self.loss

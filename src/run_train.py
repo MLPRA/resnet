@@ -2,8 +2,8 @@ import configparser
 import json
 from argparse import ArgumentParser
 import chainer
+from chainer.training.extensions import Evaluator
 
-from src.evaluator import Evaluator
 from src.resnet import ResNet50Layers
 from chainer.training import extensions
 
@@ -46,13 +46,10 @@ def run_train():
 
     trainer.extend(extensions.LogReport())
     trainer.extend(chainer.training.extensions.ProgressBar(update_interval=1))
-    evaluator = Evaluator(val_iter, model, label_handler, device=gpu)
+    evaluator = Evaluator(val_iter, model, device=gpu)
     trainer.extend(evaluator)
     trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], x_key='epoch', file_name='loss.png'))
-
-    accuracy_keys = ['validation/main/{}_accuracy'.format(label_name) for label_name in label_handler.label_names]
-    trainer.extend(
-        extensions.PlotReport(list(set().union(accuracy_keys, ['main/accuracy', 'validation/main/accuracy'])), x_key='epoch', file_name='accuracy.png'))
+    trainer.extend(extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], x_key='epoch', file_name='accuracy.png'))
 
     trainer.run()
 
